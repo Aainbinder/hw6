@@ -5,11 +5,13 @@
 // your new key right away.
 
 // For this exercise, we'll be using the "now playing" API endpoint
-// https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=en-US
+// https://api.themoviedb.org/3/movie/now_playing?api_key=6ee61b25844f9562adfbbdeb49c2af4c&language=en-US
 
 // Note: image data returned by the API will only give you the filename;
 // prepend with `https://image.tmdb.org/t/p/w500/` to get the 
 // complete image URL
+
+let db = firebase.firestore()
 
 window.addEventListener('DOMContentLoaded', async function(event) {
   // Step 1: Construct a URL to get movies playing now from TMDB, fetch
@@ -17,6 +19,11 @@ window.addEventListener('DOMContentLoaded', async function(event) {
   // movies. Write the contents of this array to the JavaScript
   // console to ensure you've got good data
   // ⬇️ ⬇️ ⬇️
+  let url = "https://api.themoviedb.org/3/movie/now_playing?api_key=6ee61b25844f9562adfbbdeb49c2af4c&language=en-US"
+  let response = await fetch(url)
+  let json = await response.json()
+  let movies = json.results
+
 
   // ⬆️ ⬆️ ⬆️ 
   // End Step 1
@@ -33,6 +40,48 @@ window.addEventListener('DOMContentLoaded', async function(event) {
   //   <a href="#" class="watched-button block text-center text-white bg-green-500 mt-4 px-4 py-2 rounded">I've watched this!</a>
   // </div>
   // ⬇️ ⬇️ ⬇️
+  let query = await db.collection('movies').get()
+  let watchList = query.docs
+
+  for(let i = 0; i < movies.length; i++){
+    let title = movies[i].title
+    let poster = movies[i].poster_path
+    let id = movies[i].id
+
+    document.querySelector('.movies').insertAdjacentHTML('beforeend', `
+    <div class="w-1/5 p-4 movie-${id}">
+    <img src="https://image.tmdb.org/t/p/w500${poster}" class="w-full">
+    <a href="#" class="watched-button block text-center text-white bg-green-500 mt-4 px-4 py-2 rounded">I've watched this!</a>
+  </div>
+  `)
+
+    
+    document.querySelector(`.movies .movie-${id} .watched-button`).addEventListener('click', async function(event){
+      event.preventDefault();
+
+      let movie = document.querySelector(`.movies .movie-${id}`)
+      if(movie.classList.contains('opacity-20')){
+        movie.classList.remove('opacity-20')
+        await db.collection('movies').doc(`${id}`).delete()
+      } else {
+        movie.classList.add('opacity-20')
+        await db.collection('movies').doc(`${id}`).set({
+          title: title,
+          img: "https://image.tmdb.org/t/p/w500" + poster,
+          watched: true,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        })
+
+      }
+    })
+  }
+
+  for(let i = 0; i < watchList.length; i++){
+    let id = watchList[i].id
+    let movie = document.querySelector(`.movies .movie-${id}`)
+    movie.classList.add('opacity-20')
+  }
+
 
   // ⬆️ ⬆️ ⬆️ 
   // End Step 2
